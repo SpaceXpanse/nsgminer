@@ -59,7 +59,7 @@ void nvml_init() {
         nvml_hDLL = LoadLibrary(path);
     }
 #endif
-    if(!hDLL) {
+    if(!nvml_hDLL) {
         applog(LOG_INFO, "Unable to load the NVIDIA Management Library");
         opt_nonvml = true;
         return;
