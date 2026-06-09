@@ -190,7 +190,7 @@ jobs:
     - name: Configure
       shell: msys2 {0}
       run: |
-        ./configure --enable-neoscrypt-xaya --without-curses LDFLAGS="-L/mingw64/lib" CPPFLAGS="-I/mingw64/include"
+        ./configure --enable-neoscrypt-xaya --without-curses --disable-dependency-tracking LDFLAGS="-L/mingw64/lib" CPPFLAGS="-I/mingw64/include"
 
     - name: Build
       shell: msys2 {0}
