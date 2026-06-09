@@ -136,6 +136,7 @@ int opt_expiry_lp = 3600;
 int opt_bench_algo = -1;
 static const bool opt_time = true;
 unsigned long long global_hashrate;
+char current_fullhash[68];
 
 #ifdef HAVE_OPENCL
 int opt_dynamic_interval = 7;

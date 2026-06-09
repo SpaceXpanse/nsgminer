@@ -172,13 +172,13 @@ jobs:
         msystem: mingw64
         update: true
         install: |
-          mingw-w64-x86_64-autoconf
-          mingw-w64-x86_64-automake
-          mingw-w64-x86_64-libtool
-          mingw-w64-x86_64-pkg-config
-          mingw-w64-x86_64-libcurl
-          mingw-w64-x86_64-jansson
-          mingw-w64-x86_64-ncurses
+          autoconf
+          automake
+          libtool
+          pkg-config
+          mingw64/mingw-w64-x86_64-libcurl
+          mingw64/mingw-w64-x86_64-jansson
+          mingw64/mingw-w64-x86_64-ncurses
 
     - name: Autogen
       shell: msys2 {0}
