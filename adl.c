@@ -42,8 +42,6 @@
 #define wlogprint(...)  applog(LOG_WARNING, __VA_ARGS__)
 #endif
 
-bool adl_active;
-bool opt_reorder = false;
 
 static
 const int opt_targettemp = 75;

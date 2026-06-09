@@ -856,8 +856,8 @@ char *print_ndevs_and_exit(int *ndevs)
 #endif
 
 
-struct cgpu_info gpus[MAX_GPUDEVICES]; /* Maximum number apparently possible */
-struct cgpu_info *cpus;
+extern struct cgpu_info gpus[MAX_GPUDEVICES]; /* Maximum number apparently possible */
+extern struct cgpu_info *cpus;
 
 
 
