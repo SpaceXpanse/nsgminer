@@ -208,7 +208,7 @@ void nvml_init() {
     opt_nonvml = true;
 }
 
-void nvml_gpu_temp_and_fanspeed(const int __unused, float *temp, int *fanspeed) {
+void nvml_gpu_temp_and_fanspeed(const uint __unused, float *temp, int *fanspeed) {
     *temp = -1.0f;
     *fanspeed = -1;
 }
