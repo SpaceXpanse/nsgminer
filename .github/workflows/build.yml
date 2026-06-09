@@ -11,25 +11,14 @@ env:
   BUILD_TYPE: Release
 
 jobs:
-  # Linux Build
-  linux-build:
+  # Linux Build - Standard
+  linux-standard:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        variant:
-          - name: "Standard"
-            flags: "--enable-neoscrypt-xaya"
-          - name: "OpenCL"
-            flags: "--enable-neoscrypt-xaya --enable-opencl"
-          - name: "FPGA"
-            flags: "--enable-neoscrypt-xaya --enable-bitforce --enable-icarus --enable-modminer --enable-x6500 --enable-ztex"
-
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Install dependencies - Standard
-      if: matrix.variant.name == 'Standard'
+    - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -43,8 +32,45 @@ jobs:
           uthash-dev \
           yasm
 
-    - name: Install dependencies - OpenCL
-      if: matrix.variant.name == 'OpenCL'
+    - name: Autogen
+      run: |
+        chmod +x autogen.sh
+        ./autogen.sh
+
+    - name: Configure
+      run: |
+        ./configure --enable-neoscrypt-xaya --without-curses
+
+    - name: Build
+      run: |
+        make -j$(nproc)
+
+    - name: Verify binary
+      run: |
+        ls -la nsgminer
+        file nsgminer
+        ./nsgminer --version 2>&1 || echo "Version check completed"
+
+    - name: Verify neoscrypt-xaya flag
+      run: |
+        ./nsgminer --help 2>&1 | grep -i "neoscrypt-xaya" || echo "neoscrypt-xaya flag not found in help, checking binary..."
+        strings nsgminer | grep -i "neoscrypt-xaya" || true
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nsgminer-linux-standard
+        path: nsgminer
+        retention-days: 7
+
+  # Linux Build - OpenCL
+  linux-opencl:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -60,8 +86,39 @@ jobs:
           ocl-icd-opencl-dev \
           opencl-headers
 
-    - name: Install dependencies - FPGA
-      if: matrix.variant.name == 'FPGA'
+    - name: Autogen
+      run: |
+        chmod +x autogen.sh
+        ./autogen.sh
+
+    - name: Configure
+      run: |
+        ./configure --enable-neoscrypt-xaya --enable-opencl --without-curses
+
+    - name: Build
+      run: |
+        make -j$(nproc)
+
+    - name: Verify binary
+      run: |
+        ls -la nsgminer
+        file nsgminer
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nsgminer-linux-opencl
+        path: nsgminer
+        retention-days: 7
+
+  # Linux Build - FPGA
+  linux-fpga:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -84,7 +141,7 @@ jobs:
 
     - name: Configure
       run: |
-        ./configure ${{ matrix.variant.flags }} --without-curses
+        ./configure --enable-neoscrypt-xaya --enable-bitforce --enable-icarus --enable-modminer --enable-x6500 --enable-ztex --without-curses
 
     - name: Build
       run: |
@@ -94,29 +151,17 @@ jobs:
       run: |
         ls -la nsgminer
         file nsgminer
-        ./nsgminer --version 2>&1 || echo "Version check completed"
-
-    - name: Verify neoscrypt-xaya flag
-      run: |
-        ./nsgminer --help 2>&1 | grep -i "neoscrypt-xaya" || echo "neoscrypt-xaya flag not found in help, checking binary..."
-        strings nsgminer | grep -i "neoscrypt-xaya" || true
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: nsgminer-linux-${{ matrix.variant.name }}
+        name: nsgminer-linux-fpga
         path: nsgminer
         retention-days: 7
 
   # Windows Build (MinGW)
   windows-build:
     runs-on: windows-latest
-    strategy:
-      matrix:
-        include:
-          - compiler: mingw
-            exe: nsgminer.exe
-
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -134,12 +179,10 @@ jobs:
           mingw-w64-x86_64-libcurl
           mingw-w64-x86_64-jansson
           mingw-w64-x86_64-ncurses
-          uthash
 
     - name: Autogen
       shell: msys2 {0}
       run: |
-        chmod +x autogen.sh
         ./autogen.sh
 
     - name: Configure
@@ -156,7 +199,6 @@ jobs:
       shell: msys2 {0}
       run: |
         ls -la nsgminer.exe
-        file nsgminer.exe
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -168,12 +210,6 @@ jobs:
   # macOS Build
   macos-build:
     runs-on: macos-latest
-    strategy:
-      matrix:
-        include:
-          - sdk: osx
-            flags: "--enable-neoscrypt-xaya"
-
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -189,7 +225,7 @@ jobs:
 
     - name: Configure
       run: |
-        ./configure ${{ matrix.flags }} --without-curses
+        ./configure --enable-neoscrypt-xaya --without-curses
 
     - name: Build
       run: |
@@ -211,12 +247,12 @@ jobs:
   # Verification test
   verify-algorithms:
     runs-on: ubuntu-latest
-    needs: linux-build
+    needs: linux-standard
     steps:
     - name: Download Linux Standard binary
       uses: actions/download-artifact@v4
       with:
-        name: nsgminer-linux-Standard
+        name: nsgminer-linux-standard
         path: .
 
     - name: Make executable and verify
@@ -234,7 +270,7 @@ jobs:
   # Full test with neoscrypt-xaya algorithm
   test-neoscrypt-xaya:
     runs-on: ubuntu-latest
-    needs: linux-build
+    needs: linux-standard
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -242,7 +278,7 @@ jobs:
     - name: Download Linux Standard binary
       uses: actions/download-artifact@v4
       with:
-        name: nsgminer-linux-Standard
+        name: nsgminer-linux-standard
         path: .
 
     - name: Make executable
