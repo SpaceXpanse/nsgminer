@@ -181,7 +181,12 @@ static int64_t ztex_scanhash(struct thr_info *thr, struct work *work,
 	ztex = thr->cgpu->device_ztex;
 
 	memcpy(sendbuf, work->data + 64, 12);
+#if defined(USE_SHA256D) || defined(USE_SCRYPT)
 	memcpy(sendbuf + 12, work->midstate, 32);
+#else
+	/* ZTEX is a SHA256 ASIC - midstate is not available in NeoScrypt-only builds */
+	memset(sendbuf + 12, 0, 32);
+#endif
 
 	ztex_selectFpga(ztex);
 	i = libztex_sendHashData(ztex, sendbuf);

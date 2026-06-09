@@ -594,9 +594,14 @@ modminer_prepare_next_work(struct modminer_fpga_state*state, struct work*work)
 {
 	char *midstate = state->next_work_cmd + 2;
 	char *taildata = midstate + 32;
+#if defined(USE_SHA256D) || defined(USE_SCRYPT)
 	if (!(memcmp(midstate, work->midstate, 32) || memcmp(taildata, work->data + 64, 12)))
 		return false;
 	memcpy(midstate, work->midstate, 32);
+#else
+	/* ModMiner is a SHA256 ASIC - midstate is not available in NeoScrypt-only builds */
+	memset(midstate, 0, 32);
+#endif
 	memcpy(taildata, work->data + 64, 12);
 	return true;
 }
