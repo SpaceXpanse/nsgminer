@@ -176,7 +176,7 @@ jobs:
           automake
           libtool
           pkg-config
-          mingw64/mingw-w64-x86_64-libcurl
+          mingw64/mingw-w64-x86_64-curl
           mingw64/mingw-w64-x86_64-jansson
           mingw64/mingw-w64-x86_64-ncurses
 
