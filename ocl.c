@@ -615,7 +615,7 @@ _clState *initCl(unsigned int gpu, char *name, size_t nameSize)
 
    if(cgpu->kernel == KL_VOID) {
 #ifdef USE_NEOSCRYPT
-        if(opt_neoscrypt) {
+        if(opt_neoscrypt || opt_neoscrypt_xaya) {
             applog(LOG_INFO, "Selecting the default NeoScrypt kernel");
             clState->chosen_kernel = KL_NEOSCRYPT;
         } else
@@ -700,7 +700,7 @@ _clState *initCl(unsigned int gpu, char *name, size_t nameSize)
       (clState->chosen_kernel == KL_DIABLO) ||
       (clState->chosen_kernel == KL_DIAKGCN)) &&
       (clState->vwidth == 1) && clState->hasOpenCL11plus) ||
-      opt_neoscrypt || opt_scrypt) clState->goffset = true;
+      opt_neoscrypt || opt_neoscrypt_xaya || opt_scrypt) clState->goffset = true;
 
     if(cgpu->work_size && (cgpu->work_size <= clState->max_work_size)) {
         clState->wsize = cgpu->work_size;
@@ -882,7 +882,7 @@ build:
 	char *CompilerOptions = calloc(1, 256);
 
 #ifdef USE_NEOSCRYPT
-    if(opt_neoscrypt) {
+    if(opt_neoscrypt || opt_neoscrypt_xaya) {
         sprintf(CompilerOptions, "-D WORKSIZE=%d", (int)clState->wsize);
     } else
 #endif
@@ -1013,7 +1013,7 @@ built:
 	}
 
 #ifdef USE_NEOSCRYPT
-    if(opt_neoscrypt) {
+    if(opt_neoscrypt || opt_neoscrypt_xaya) {
         ullong thr_alloc = 32768;
         if(clState->chosen_kernel == KL_NEOSCRYPT_VLIWP) thr_alloc = 65536;
         clState->padbufsize = (1U << cgpu->intensity) * thr_alloc;

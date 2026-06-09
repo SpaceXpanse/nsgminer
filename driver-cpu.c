@@ -169,6 +169,9 @@ const char *algo_names[] = {
 #ifdef USE_NEOSCRYPT
     [ALGO_NEOSCRYPT] = "neoscrypt",
 #endif
+#ifdef USE_NEOSCRYPT_XAYA
+    [ALGO_NEOSCRYPT_XAYA] = "neoscrypt-xaya",
+#endif
 #ifdef USE_SCRYPT
     [ALGO_SCRYPT] = "scrypt",
 #endif
@@ -703,6 +706,8 @@ void *set_algo_quick(enum algo_types *algo) {
 
     if(opt_neoscrypt) {
         *algo = ALGO_NEOSCRYPT;
+    } else if(opt_neoscrypt_xaya) {
+        *algo = ALGO_NEOSCRYPT_XAYA;
     } else if(opt_scrypt) {
         *algo = ALGO_SCRYPT;
     } else {
@@ -848,6 +853,41 @@ static int scanhash_neoscrypt(struct thr_info *thr, uint *pdata, const uint *pta
 }
 #endif
 
+#ifdef USE_NEOSCRYPT_XAYA
+/* NeoScrypt-Xaya: variant with 80-byte header */
+static int scanhash_neoscrypt_xaya(struct thr_info *thr, uint *pdata, const uint *ptarget,
+  uint *phash, uint start_nonce, uint max_nonce, uint *final_nonce) {
+    uint hash[8];
+    uint i, inc_nonce = 1;
+    const uint t32 = ptarget[7];
+
+    pdata[19] = start_nonce;
+
+    while((pdata[19] < max_nonce) && !thr->work_restart) {
+
+        neoscrypt((uchar *) pdata, (uchar *) hash, 0x80000620);
+
+        /* Quick hash check */
+        if(hash[7] <= t32) {
+            /* Complete hash check */
+            if(fulltest_le(hash, ptarget)) {
+                *final_nonce = pdata[19];
+                /* LE straight ordered */
+                for(i = 0; i < 8; i++)
+                  phash[i] = htole32(hash[i]);
+                return(1);
+            }
+        }
+
+        pdata[19] += inc_nonce;
+
+    }
+
+    *final_nonce = pdata[19];
+    return(0);
+}
+#endif
+
 #ifdef USE_SCRYPT
 /* Scrypt(1024, 1, 1) with Salsa20/8 through NeoScrypt */
 static int scanhash_altscrypt(struct thr_info *thr, uint *pdata, const uint *ptarget,
@@ -902,6 +942,12 @@ static int64_t cpu_scanhash(struct thr_info *thr, struct work *work, int64_t max
 #ifdef USE_NEOSCRYPT
         if(opt_neoscrypt) {
             rc = scanhash_neoscrypt(thr, (uint *) work->data, (uint *) work->target,
+              (uint *) work->hash, work->blk.nonce, max_nonce, &final_nonce);
+        } else
+#endif
+#ifdef USE_NEOSCRYPT_XAYA
+        if(opt_neoscrypt_xaya) {
+            rc = scanhash_neoscrypt_xaya(thr, (uint *) work->data, (uint *) work->target,
               (uint *) work->hash, work->blk.nonce, max_nonce, &final_nonce);
         } else
 #endif

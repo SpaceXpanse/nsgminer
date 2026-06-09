@@ -57,6 +57,7 @@ enum algo_types {
 	ALGO_SSE4_64,		/* SSE4 for x86_64 */
 	ALGO_ALTIVEC_4WAY,	/* parallel Altivec */
 	ALGO_NEOSCRYPT,		/* NeoScrypt */
+	ALGO_NEOSCRYPT_XAYA,	/* NeoScrypt-Xaya */
 	ALGO_SCRYPT,		/* Scrypt */
 	ALGO_VOID,
 };

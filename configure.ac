@@ -151,6 +151,16 @@ if test "x$neoscrypt" = xyes; then
 	AC_DEFINE([USE_NEOSCRYPT], [1], [Defined to 1 if NeoScrypt support is wanted])
 fi
 
+neoscrypt_xaya="no"
+
+AC_ARG_ENABLE([neoscrypt-xaya],
+	[AC_HELP_STRING([--enable-neoscrypt-xaya],[Build with support for NeoScrypt-xaya (default disabled)])],
+	[neoscrypt_xaya=$enableval]
+	)
+if test "x$neoscrypt_xaya" = xyes; then
+	AC_DEFINE([USE_NEOSCRYPT_XAYA], [1], [Defined to 1 if NeoScrypt-xaya support is wanted])
+fi
+
 
 scrypt="no"
 

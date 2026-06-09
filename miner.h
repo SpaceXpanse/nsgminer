@@ -848,6 +848,7 @@ extern struct cgpu_info gpus[MAX_GPUDEVICES];
 extern int gpu_threads;
 
 extern bool opt_neoscrypt;
+extern bool opt_neoscrypt_xaya;
 extern bool opt_scrypt;
 extern bool opt_sha256d;
 
