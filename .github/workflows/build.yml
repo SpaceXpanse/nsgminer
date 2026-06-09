@@ -231,6 +231,8 @@ jobs:
 
     - name: Configure
       run: |
+        CPPFLAGS="-I$(brew --prefix libgpg-error)/include -I$(brew --prefix libgcrypt)/include" \
+        LDFLAGS="-L$(brew --prefix libgpg-error)/lib -L$(brew --prefix libgcrypt)/lib" \
         ./configure --enable-neoscrypt-xaya --without-curses
 
     - name: Build
