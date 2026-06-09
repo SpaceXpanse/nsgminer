@@ -12,9 +12,10 @@
 
 #ifdef HAVE_NVML
 
+#include "miner.h"
+
 /* NVML is available for Linux and Windows only */
 #if defined(__linux__) || defined(_WIN32)
-#include "miner.h"
 
 #ifdef __linux__
 #include <stdlib.h>
