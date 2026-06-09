@@ -594,7 +594,14 @@ bool x6500_start_work(struct thr_info *thr, struct work *work)
 	mutex_lock(&x6500->device_mutex);
 
 	for (int i = 1, j = 0; i < 9; ++i, j += 4)
+#if defined(USE_SHA256D) || defined(USE_SCRYPT)
 		x6500_set_register(jp, i, fromlebytes(work->midstate, j));
+#else
+		{
+			uint32_t zero = 0;
+			x6500_set_register(jp, i, zero);
+		}
+#endif
 
 	for (int i = 9, j = 64; i < 12; ++i, j += 4)
 		x6500_set_register(jp, i, fromlebytes(work->data, j));
@@ -665,9 +672,11 @@ int64_t x6500_process_results(struct thr_info *thr, struct work *work)
 				       x6500->api->name, x6500->device_id, fpgaid,
 				       (unsigned long)nonce);
 				mutex_lock(&stats_lock);
+#if defined(USE_SHA256D) || defined(USE_SCRYPT)
 				++total_diff1;
 				++x6500->diff1;
 				++work->pool->diff1;
+#endif
 				++hw_errors;
 				++x6500->hw_errors;
 				mutex_unlock(&stats_lock);
