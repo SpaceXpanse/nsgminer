@@ -147,6 +147,7 @@ int gpu_threads;
 #endif
 
 bool opt_restart = true;
+bool opt_reorder = false;
 static bool opt_nogpu;
 
 struct list_head scan_devices;
