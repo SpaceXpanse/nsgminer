@@ -34,7 +34,7 @@ HMODULE hDLL;
 
 extern bool opt_nonvml;
 
-static char * (*NVML_nvmlErrorString)();
+static nvmlReturn_t (*NVML_nvmlErrorString)(nvmlReturn_t);
 static nvmlReturn_t (*NVML_nvmlInit)();
 static nvmlReturn_t (*NVML_nvmlDeviceGetCount)(uint *);
 static nvmlReturn_t (*NVML_nvmlDeviceGetHandleByIndex)(uint, nvmlDevice_t *);
