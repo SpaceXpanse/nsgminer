@@ -789,7 +789,12 @@ static int64_t icarus_scanhash(struct thr_info *thr, struct work *work,
 	was_first_run = state->firstrun;
 
 	// Prepare the next work immediately
+#if defined(USE_SHA256D) || defined(USE_SCRYPT)
 	memcpy(ob_bin, work->midstate, 32);
+#else
+	/* Icarus is a SHA256 ASIC - midstate is not available in NeoScrypt-only builds */
+	memset(ob_bin, 0, 32);
+#endif
 	memcpy(ob_bin + 52, work->data + 64, 12);
 	if (!(memcmp(&ob_bin[56], "\xff\xff\xff\xff", 4)
 	   || memcmp(&ob_bin, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 32))) {
