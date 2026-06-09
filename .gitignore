@@ -63,3 +63,6 @@ core*
 *.zip
 *.tbz2
 *.bz2
+
+# Kilo Code local memory
+.kilocode/
