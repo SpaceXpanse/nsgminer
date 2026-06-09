@@ -90,7 +90,7 @@ void nvml_init() {
           dlsym(hDLL, "nvmlDeviceGetPciInfo_v2");
     }
 
-    NVML_nvmlErrorString = (char * (*)()) \
+    NVML_nvmlErrorString = (nvmlReturn_t (*)(nvmlReturn_t)) \
       dlsym(hDLL, "nvmlErrorString");
     NVML_nvmlDeviceGetName = (nvmlReturn_t (*)(nvmlDevice_t, char *, uint)) \
       dlsym(hDLL, "nvmlDeviceGetName");
