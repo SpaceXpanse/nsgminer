@@ -22,14 +22,14 @@
 #include <unistd.h>
 #include <dlfcn.h>
 
-void *hDLL;
+void *nvml_hDLL;
 #else
 #include <windows.h>
 
 #define dlsym (void *) GetProcAddress
 #define dlclose FreeLibrary
 
-HMODULE hDLL;
+HMODULE nvml_hDLL;
 #endif
 
 extern bool opt_nonvml;
@@ -48,15 +48,15 @@ void nvml_init() {
     nvmlReturn_t ret;
 
 #ifdef __linux__
-    hDLL = dlopen("libnvidia-ml.so", RTLD_LAZY | RTLD_GLOBAL);
+    nvml_hDLL = dlopen("libnvidia-ml.so", RTLD_LAZY | RTLD_GLOBAL);
 #else
     /* Not in system path, but could be local */
-    hDLL = LoadLibrary("nvml.dll");
-    if(!hDLL) {
+    nvml_hDLL = LoadLibrary("nvml.dll");
+    if(!nvml_hDLL) {
         /* %ProgramW6432% is unsupported by OS prior to year 2009 */
         char path[512];
         ExpandEnvironmentStringsA("%ProgramFiles%\\NVIDIA Corporation\\NVSMI\\nvml.dll", path, sizeof(path));
-        hDLL = LoadLibrary(path);
+        nvml_hDLL = LoadLibrary(path);
     }
 #endif
     if(!hDLL) {
@@ -65,41 +65,41 @@ void nvml_init() {
         return;
     }
 
-    NVML_nvmlInit = (nvmlReturn_t (*)()) dlsym(hDLL, "nvmlInit_v2");
+    NVML_nvmlInit = (nvmlReturn_t (*)()) dlsym(nvml_hDLL, "nvmlInit_v2");
     if(!NVML_nvmlInit) {
         /* Try an older interface */
-        NVML_nvmlInit = (nvmlReturn_t (*)()) dlsym(hDLL, "nvmlInit");
+        NVML_nvmlInit = (nvmlReturn_t (*)()) dlsym(nvml_hDLL, "nvmlInit");
         if(!NVML_nvmlInit) {
             applog(LOG_ERR, "NVML: unable to initialise");
             opt_nonvml = true;
             return;
         } else {
             NVML_nvmlDeviceGetCount = (nvmlReturn_t (*)(uint *)) \
-              dlsym(hDLL, "nvmlDeviceGetCount");
+              dlsym(nvml_hDLL, "nvmlDeviceGetCount");
             NVML_nvmlDeviceGetHandleByIndex = (nvmlReturn_t (*)(uint, nvmlDevice_t *)) \
-              dlsym(hDLL, "nvmlDeviceGetHandleByIndex");
+              dlsym(nvml_hDLL, "nvmlDeviceGetHandleByIndex");
             NVML_nvmlDeviceGetPciInfo = (nvmlReturn_t (*)(nvmlDevice_t, nvmlPciInfo_t *)) \
-              dlsym(hDLL, "nvmlDeviceGetPciInfo");
+              dlsym(nvml_hDLL, "nvmlDeviceGetPciInfo");
         }
     } else {
         NVML_nvmlDeviceGetCount = (nvmlReturn_t (*)(uint *)) \
-          dlsym(hDLL, "nvmlDeviceGetCount_v2");
+          dlsym(nvml_hDLL, "nvmlDeviceGetCount_v2");
         NVML_nvmlDeviceGetHandleByIndex = (nvmlReturn_t (*)(uint, nvmlDevice_t *)) \
-          dlsym(hDLL, "nvmlDeviceGetHandleByIndex_v2");
+          dlsym(nvml_hDLL, "nvmlDeviceGetHandleByIndex_v2");
         NVML_nvmlDeviceGetPciInfo = (nvmlReturn_t (*)(nvmlDevice_t, nvmlPciInfo_t *)) \
-          dlsym(hDLL, "nvmlDeviceGetPciInfo_v2");
+          dlsym(nvml_hDLL, "nvmlDeviceGetPciInfo_v2");
     }
 
     NVML_nvmlErrorString = (nvmlReturn_t (*)(nvmlReturn_t)) \
-      dlsym(hDLL, "nvmlErrorString");
+      dlsym(nvml_hDLL, "nvmlErrorString");
     NVML_nvmlDeviceGetName = (nvmlReturn_t (*)(nvmlDevice_t, char *, uint)) \
-      dlsym(hDLL, "nvmlDeviceGetName");
+      dlsym(nvml_hDLL, "nvmlDeviceGetName");
     NVML_nvmlDeviceGetTemperature = (nvmlReturn_t (*)(nvmlDevice_t, nvmlTemperatureSensors_t, uint *)) \
-      dlsym(hDLL, "nvmlDeviceGetTemperature");
+      dlsym(nvml_hDLL, "nvmlDeviceGetTemperature");
     NVML_nvmlDeviceGetFanSpeed = (nvmlReturn_t (*)(nvmlDevice_t, uint *)) \
-      dlsym(hDLL, "nvmlDeviceGetFanSpeed");
+      dlsym(nvml_hDLL, "nvmlDeviceGetFanSpeed");
     NVML_nvmlShutdown = (nvmlReturn_t (*)()) \
-      dlsym(hDLL, "nvmlShutdown");
+      dlsym(nvml_hDLL, "nvmlShutdown");
 
     ret = NVML_nvmlInit();
     if(ret != NVML_SUCCESS) {
@@ -197,7 +197,7 @@ void nvml_shutdown() {
         applog(LOG_ERR, "NVML: unable to shut down");
         return;
     }
-    if(hDLL) dlclose(hDLL);
+    if(nvml_hDLL) dlclose(nvml_hDLL);
 }
 
 #else /* !(defined(__linux__) || defined(_WIN32)) */
