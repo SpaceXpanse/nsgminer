@@ -370,7 +370,13 @@ re_send:
 	}
 
 	sprintf((char *)ob, ">>>>>>>>");
+#if defined(USE_SHA256D) || defined(USE_SCRYPT)
 	memcpy(ob + 8, work->midstate, 32);
+#else
+	/* BitForce is a SHA256 ASIC - midstate is not available in NeoScrypt-only builds.
+	 * Zero the field as this path should not be reached in NeoScrypt mode. */
+	memset(ob + 8, 0, 32);
+#endif
 	memcpy(ob + 8 + 32, work->data + 64, 12);
 	if (!bitforce->nonce_range) {
 		sprintf((char *)ob + 8 + 32 + 12, ">>>>>>>>");
