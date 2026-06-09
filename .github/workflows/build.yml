@@ -172,6 +172,7 @@ jobs:
         msystem: mingw64
         update: true
         install: |
+          make
           mingw64/mingw-w64-x86_64-gcc
           mingw64/mingw-w64-x86_64-make
           autoconf
@@ -189,17 +190,13 @@ jobs:
 
     - name: Configure
       shell: msys2 {0}
-      env:
-        MAKE: mingw32-make
       run: |
-        ./configure --enable-neoscrypt-xaya --without-curses --disable-dependency-tracking LDFLAGS="-L/mingw64/lib" CPPFLAGS="-I/mingw64/include"
+        ./configure --enable-neoscrypt-xaya --without-curses LDFLAGS="-L/mingw64/lib" CPPFLAGS="-I/mingw64/include"
 
     - name: Build
       shell: msys2 {0}
-      env:
-        MAKE: mingw32-make
       run: |
-        mingw32-make -j$NUMBER_OF_PROCESSORS
+        make -j$NUMBER_OF_PROCESSORS
 
     - name: Verify binary
       shell: msys2 {0}
