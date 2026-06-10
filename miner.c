@@ -176,6 +176,7 @@ bool opt_autoengine;
 
 bool opt_noadl;
 bool opt_nonvml;
+bool opt_reorder;
 #if HAVE_ADL
 bool adl_active = false;
 #endif
@@ -283,6 +284,7 @@ ullong current_diff = 0xFFFFFFFFFFFFFFFFULL;
 static char best_share[8] = "0";
 static char block_diff[8];
 uint64_t best_diff = 0;
+char current_fullhash[68];
 
 static bool known_blkheight_current;
 static uint32_t known_blkheight;
