@@ -39,7 +39,7 @@ jobs:
 
     - name: Configure
       run: |
-        ./configure --without-curses
+        ./configure --enable-neoscrypt-xaya --without-curses
 
     - name: Build
       run: |
@@ -93,7 +93,7 @@ jobs:
 
     - name: Configure
       run: |
-        ./configure --enable-opencl --without-curses
+        ./configure --enable-neoscrypt-xaya --enable-opencl --without-curses
 
     - name: Build
       run: |
@@ -141,7 +141,7 @@ jobs:
 
     - name: Configure
       run: |
-        ./configure --enable-bitforce --enable-icarus --enable-modminer --enable-x6500 --enable-ztex --without-curses
+        ./configure --enable-neoscrypt-xaya --enable-bitforce --enable-icarus --enable-modminer --enable-x6500 --enable-ztex --without-curses
 
     - name: Build
       run: |
@@ -191,7 +191,7 @@ jobs:
     - name: Configure
       shell: msys2 {0}
       run: |
-        ./configure --without-curses LDFLAGS="-L/mingw64/lib" CPPFLAGS="-I/mingw64/include"
+        ./configure --enable-neoscrypt-xaya --without-curses LDFLAGS="-L/mingw64/lib" CPPFLAGS="-I/mingw64/include"
 
     - name: Build
       shell: msys2 {0}
@@ -234,7 +234,7 @@ jobs:
       run: |
         CPPFLAGS="-I$(brew --prefix libgpg-error)/include -I$(brew --prefix libgcrypt)/include" \
         LDFLAGS="-L$(brew --prefix libgpg-error)/lib -L$(brew --prefix libgcrypt)/lib" \
-        ./configure --without-curses
+        ./configure --enable-neoscrypt-xaya --without-curses
 
     - name: Build
       run: |
@@ -273,8 +273,8 @@ jobs:
     - name: Check for neoscrypt-xaya support
       run: |
         echo "Checking neoscrypt-xaya implementation..."
-        strings nsgminer | grep -i "xaya-byteswap" | head -5 || echo "xaya-byteswap string found in binary"
-        ./nsgminer --help 2>&1 | grep -i "xaya-byteswap" && echo "xaya-byteswap flag is available" || echo "Help check completed"
+        strings nsgminer | grep -i "neoscrypt-xaya" | head -5 || echo "neoscrypt-xaya string found in binary"
+        ./nsgminer --help 2>&1 | grep -i "neoscrypt-xaya" && echo "neoscrypt-xaya flag is available" || echo "Help check completed"
 
   # Full test with neoscrypt-xaya algorithm
   test-neoscrypt-xaya:
