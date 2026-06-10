@@ -1821,6 +1821,9 @@ static bool work_decode(struct pool *pool, struct work *work, json_t *val)
 
     if(!opt_neoscrypt) data_size = 128;
 
+    applog(LOG_DEBUG, "work_decode: Pool %d, data_size=%u, target_size=%u, opt_neoscrypt=%d",
+           pool->pool_no, data_size, target_size, opt_neoscrypt);
+
 	if (work->tmpl) {
 		const char *err = blktmpl_add_jansson(work->tmpl, res_val, time(NULL));
 		if (err) {
@@ -1917,6 +1920,40 @@ static bool work_decode(struct pool *pool, struct work *work, json_t *val)
     } else if(!jobj_binary(res_val, "data", work->data, data_size, true)) {
         applog(LOG_ERR, "JSON invalid data");
         return(false);
+    }
+
+    /* Header validation for NeoScrypt variants */
+    if(opt_neoscrypt && !opt_xayaswab) {
+        /* Regular NeoScrypt: 80-byte header + 48-byte padding = 128 bytes total */
+        if(data_size != 128) {
+            applog(LOG_WARNING, "work_decode: Invalid header length for regular NeoScrypt: %u bytes (expected 128)", data_size);
+            return false;
+        }
+        /* Validate padding at offset 80: should be 0x00000080 */
+        if(memcmp(work->data + 80, "\x00\x00\x00\x80", 4) != 0) {
+            applog(LOG_WARNING, "work_decode: Invalid padding marker in regular NeoScrypt header at offset 80");
+            if(opt_debug) {
+                char *header = bin2hex(work->data, 128);
+                applog(LOG_WARNING, "work_decode: Header dump: %s", header);
+                free(header);
+            }
+            return false;
+        }
+        applog(LOG_DEBUG, "work_decode: Regular NeoScrypt header validation passed (128 bytes)");
+    } else if(opt_xayaswab) {
+        /* Xaya/NeoScrypt-Xaya: 80-byte header only */
+        if(data_size != 80) {
+            applog(LOG_WARNING, "work_decode: Invalid header length for NeoScrypt-Xaya: %u bytes (expected 80)", data_size);
+            return false;
+        }
+        applog(LOG_DEBUG, "work_decode: NeoScrypt-Xaya header validation passed (80 bytes)");
+    }
+
+    if(opt_debug) {
+        char *header = bin2hex(work->data, data_size);
+        applog(LOG_DEBUG, "work_decode: Pool %d, decoded header (%u bytes): %s",
+               pool->pool_no, data_size, header);
+        free(header);
     }
 
 #if defined(USE_SHA256D) || defined(USE_SCRYPT)
@@ -2699,6 +2736,17 @@ share_result(json_t *val, json_t *res, json_t *err, const struct work *work,
 		mutex_unlock(&stats_lock);
 
 		applog(LOG_DEBUG, "PROOF OF WORK RESULT: false (booooo)");
+		if(opt_debug) {
+			char *header = bin2hex(work->data, opt_neoscrypt ? 80 : 128);
+			applog(LOG_DEBUG, "share_result: Rejected share from pool %d, device %s %d",
+			       work->pool->pool_no, cgpu->api->name, cgpu->device_id);
+			applog(LOG_DEBUG, "share_result: Rejected share header: %s", header);
+			applog(LOG_DEBUG, "share_result: Rejected share job_id: %s, nonce2: %s, ntime: %s",
+			       work->job_id ? work->job_id : "(null)",
+			       work->nonce2 ? work->nonce2 : "(null)",
+			       work->ntime ? work->ntime : "(null)");
+			free(header);
+		}
 		if (!QUIET) {
 			char where[20];
 			char disposition[36] = "reject";
@@ -5817,7 +5865,9 @@ bool parse_stratum_response(struct pool *pool, char *s)
 
 	val = JSON_LOADS(s, &err);
 	if (!val) {
-		applog(LOG_INFO, "JSON decode failed(%d): %s", err.line, err.text);
+		applog(LOG_WARNING, "parse_stratum_response: JSON decode failed for pool %d at line %d: %s",
+		       pool->pool_no, err.line, err.text);
+		applog(LOG_DEBUG, "parse_stratum_response: Failed raw response: %.200s", s);
 		goto out;
 	}
 
@@ -5880,10 +5930,22 @@ fishy:
 		HASH_DEL(stratum_shares, sshare);
 	mutex_unlock(&sshare_lock);
 	if (!sshare) {
-		if (json_is_true(res_val))
+		if (json_is_true(res_val)) {
 			applog(LOG_NOTICE, "Accepted untracked stratum share from pool %d", pool->pool_no);
-		else
+			applog(LOG_DEBUG, "parse_stratum_response: Untracked share accepted, pool %d, id=%d",
+			       pool->pool_no, id);
+		} else {
 			applog(LOG_NOTICE, "Rejected untracked stratum share from pool %d", pool->pool_no);
+			if (err_val) {
+				char *err_str = json_dumps(err_val, JSON_INDENT(3));
+				applog(LOG_DEBUG, "parse_stratum_response: Untracked share rejected, pool %d, id=%d, error: %s",
+				       pool->pool_no, id, err_str ? err_str : "(null)");
+				free(err_str);
+			} else {
+				applog(LOG_DEBUG, "parse_stratum_response: Untracked share rejected, pool %d, id=%d, error: (null)",
+				       pool->pool_no, id);
+			}
+		}
 		goto out;
 	}
 	else {
@@ -6563,43 +6625,109 @@ static void gen_stratum_work(struct pool *pool, struct work *work) {
         /* Version */
         hex2bin((uchar *) &t, (char *) pool->swork.bbversion, 4);
         data[0] = be32toh(t);
+        applog(LOG_DEBUG, "gen_stratum_work: Header version (Xaya/NeoScrypt): 0x%08X (BE)", data[0]);
         /* Previous block hash */
         hex2bin((uchar *) temp_bin, (char *) pool->swork.prev_hash, 32);
         for(i = 0; i < 8; i++)
           data[i + 1] = be32toh(((uint *) temp_bin)[i]);
+        applog(LOG_DEBUG, "gen_stratum_work: Previous block hash (BE conversion for %d words)", 8);
         /* Merkle root */
         for(i = 0; i < 8; i++)
           data[i + 9] = le32toh(((uint *) merkle_root)[i]);
+        applog(LOG_DEBUG, "gen_stratum_work: Merkle root (LE conversion for %d words)", 8);
         /* Time */
         hex2bin((uchar *) &t, (char *) pool->swork.ntime, 4);
         data[17] = be32toh(t);
+        applog(LOG_DEBUG, "gen_stratum_work: Block time: 0x%08X (BE)", data[17]);
         /* Difficulty */
         hex2bin((uchar *) &t, (char *) pool->swork.nbit, 4);
         data[18] = be32toh(t);
+        applog(LOG_DEBUG, "gen_stratum_work: Difficulty nbits: 0x%08X (BE)", data[18]);
         /* Erase the remaining part */
         memset(&data[19], 0x00, 52);
+
+        /* Endianness validation for Xaya/NeoScrypt header fields */
+        uint32_t version = be32toh(data[0]);
+        uint32_t ntime = be32toh(data[17]);
+        uint32_t nbits = be32toh(data[18]);
+        if(version == 0 || version > 0xFFFFFFFF) {
+            applog(LOG_WARNING, "gen_stratum_work: Invalid version field for Xaya/NeoScrypt: 0x%08X", version);
+            if(opt_debug) {
+                char *header = bin2hex(data, 80);
+                applog(LOG_WARNING, "gen_stratum_work: Invalid header dump: %s", header);
+                free(header);
+            }
+        }
+        if(ntime == 0) {
+            applog(LOG_WARNING, "gen_stratum_work: Invalid timestamp for Xaya/NeoScrypt: 0x%08X", ntime);
+        }
+        if(nbits == 0) {
+            applog(LOG_WARNING, "gen_stratum_work: Invalid nbits for Xaya/NeoScrypt: 0x%08X", nbits);
+        }
+        applog(LOG_DEBUG, "gen_stratum_work: Xaya/NeoScrypt header endianness validated (version=0x%08X, ntime=0x%08X, nbits=0x%08X)",
+               version, ntime, nbits);
+
+        applog(LOG_DEBUG, "gen_stratum_work: Xaya/NeoScrypt header complete (80 bytes)");
+        if(opt_debug) {
+            char *header = bin2hex(data, 80);
+            applog(LOG_DEBUG, "gen_stratum_work: Xaya/NeoScrypt header: %s", header);
+            free(header);
+        }
     } else {
         /* Version */
         hex2bin((uchar *) &t, (char *) pool->swork.bbversion, 4);
         data[0] = le32toh(t);
+        applog(LOG_DEBUG, "gen_stratum_work: Header version (Regular): 0x%08X (LE)", data[0]);
         /* Previous block hash */
         hex2bin((uchar *) temp_bin, (char *) pool->swork.prev_hash, 32);
         for(i = 0; i < 8; i++)
           data[i + 1] = le32toh(((uint *) temp_bin)[i]);
+        applog(LOG_DEBUG, "gen_stratum_work: Previous block hash (LE conversion for %d words)", 8);
         /* Merkle root */
         for(i = 0; i < 8; i++)
           data[i + 9] = be32toh(((uint *) merkle_root)[i]);
+        applog(LOG_DEBUG, "gen_stratum_work: Merkle root (BE conversion for %d words)", 8);
         /* Time */
         hex2bin((uchar *) &t, (char *) pool->swork.ntime, 4);
         data[17] = le32toh(t);
+        applog(LOG_DEBUG, "gen_stratum_work: Block time: 0x%08X (LE)", data[17]);
         /* Difficulty */
         hex2bin((uchar *) &t, (char *) pool->swork.nbit, 4);
         data[18] = le32toh(t);
+        applog(LOG_DEBUG, "gen_stratum_work: Difficulty nbits: 0x%08X (LE)", data[18]);
         /* Erase the remaining part */
         memset(&data[19], 0x00, 52);
         /* Not necessary probably */
         data[20] = 0x80000000;
         data[31] = 0x00000280;
+
+        /* Endianness validation for regular header fields (little-endian) */
+        uint32_t version_le = le32toh(data[0]);
+        uint32_t ntime_le = le32toh(data[17]);
+        uint32_t nbits_le = le32toh(data[18]);
+        if(version_le == 0 || version_le > 0xFFFFFFFF) {
+            applog(LOG_WARNING, "gen_stratum_work: Invalid version field for regular: 0x%08X", version_le);
+            if(opt_debug) {
+                char *header = bin2hex(data, 80);
+                applog(LOG_WARNING, "gen_stratum_work: Invalid header dump: %s", header);
+                free(header);
+            }
+        }
+        if(ntime_le == 0) {
+            applog(LOG_WARNING, "gen_stratum_work: Invalid timestamp for regular: 0x%08X", ntime_le);
+        }
+        if(nbits_le == 0) {
+            applog(LOG_WARNING, "gen_stratum_work: Invalid nbits for regular: 0x%08X", nbits_le);
+        }
+        applog(LOG_DEBUG, "gen_stratum_work: Regular header endianness validated (version=0x%08X, ntime=0x%08X, nbits=0x%08X)",
+               version_le, ntime_le, nbits_le);
+
+        applog(LOG_DEBUG, "gen_stratum_work: Regular header complete (80 bytes)");
+        if(opt_debug) {
+            char *header = bin2hex(data, 80);
+            applog(LOG_DEBUG, "gen_stratum_work: Regular header: %s", header);
+            free(header);
+        }
     }
 
 	/* Store the stratum work diff to check it still matches the pool's
@@ -6673,6 +6801,16 @@ void submit_work_async(struct work *work_in, struct timeval *tv_work_found)
 
 	if (tv_work_found)
 		memcpy(&(work->tv_work_found), tv_work_found, sizeof(struct timeval));
+
+	if(opt_debug) {
+		uint32_t *work_nonce = (uint32_t *)(work->data + 76);
+		char *header = bin2hex((const uchar *)work->data, opt_neoscrypt ? 80 : 128);
+		applog(LOG_DEBUG, "submit_work_async: Copying work for submission, nonce at data[76]=0x%08X", *work_nonce);
+		applog(LOG_DEBUG, "submit_work_async: Header hex: %s", header);
+		applog(LOG_DEBUG, "submit_work_async: Work job_id=%s, stratum=%s", work->job_id ? work->job_id : "(null)", work->stratum ? "yes" : "no");
+		free(header);
+	}
+
 	applog(LOG_DEBUG, "Pushing submit work to work thread");
 
 	mutex_lock(&submitting_lock);
@@ -6709,8 +6847,51 @@ enum test_nonce2_result _test_nonce2(struct work *work, uint32_t nonce,
 
 #ifdef USE_NEOSCRYPT
     if(opt_neoscrypt) {
+        /* Validate header endianness before processing */
+        uint32_t *data32 = (uint32_t *)work->data;
+        if(opt_xayaswab) {
+            /* Xaya/NeoScrypt-Xaya: Big-endian fields */
+            uint32_t version = be32toh(data32[0]);
+            uint32_t ntime = be32toh(data32[17]);
+            uint32_t nbits = be32toh(data32[18]);
+            if(opt_debug) {
+                applog(LOG_DEBUG, "_test_nonce2: Xaya/NeoScrypt header endianness check (BE): version=0x%08X, ntime=0x%08X, nbits=0x%08X",
+                      version, ntime, nbits);
+            }
+            /* Sanity check: version should be reasonable, ntime should be > 0 and not too far in future */
+            if(version == 0 || ntime == 0 || nbits == 0) {
+                applog(LOG_WARNING, "_test_nonce2: Invalid header fields detected for Xaya/NeoScrypt (version=0x%08X, ntime=0x%08X, nbits=0x%08X)",
+                      version, ntime, nbits);
+            }
+        } else {
+            /* Regular NeoScrypt: Little-endian fields */
+            uint32_t version = le32toh(data32[0]);
+            uint32_t ntime = le32toh(data32[17]);
+            uint32_t nbits = le32toh(data32[18]);
+            if(opt_debug) {
+                applog(LOG_DEBUG, "_test_nonce2: Regular NeoScrypt header endianness check (LE): version=0x%08X, ntime=0x%08X, nbits=0x%08X",
+                      version, ntime, nbits);
+            }
+            /* Sanity check */
+            if(version == 0 || ntime == 0 || nbits == 0) {
+                applog(LOG_WARNING, "_test_nonce2: Invalid header fields detected for regular NeoScrypt (version=0x%08X, ntime=0x%08X, nbits=0x%08X)",
+                      version, ntime, nbits);
+            }
+        }
+
+        if(opt_debug) {
+            uint32_t *work_nonce = (uint32_t *)(work->data + 76);
+            applog(LOG_DEBUG, "_test_nonce2: NeoScrypt nonce verification, raw nonce=0x%08X, data[19]=0x%08X",
+                  nonce, *work_nonce);
+        }
 
         neoscrypt((uchar *) work->data, (uchar *) work->hash, 0x80000620);
+
+        if(opt_debug) {
+            char *hash_hex = bin2hex(work->hash, 32);
+            applog(LOG_DEBUG, "_test_nonce2: NeoScrypt hash result: %s", hash_hex);
+            free(hash_hex);
+        }
 
         if(work->hash[31])
           return(TNR_BAD);
@@ -6731,7 +6912,18 @@ enum test_nonce2_result _test_nonce2(struct work *work, uint32_t nonce,
 
         data[19] = htobe32(nonce);
 
+        if(opt_debug) {
+            applog(LOG_DEBUG, "_test_nonce2: Scrypt nonce conversion, raw nonce=0x%08X -> data[19]=0x%08X (BE)",
+                  nonce, data[19]);
+        }
+
         neoscrypt((uchar *) data, (uchar *) work->hash, 0x80000903);
+
+        if(opt_debug) {
+            char *hash_hex = bin2hex((uchar *)work->hash, 32);
+            applog(LOG_DEBUG, "_test_nonce2: Scrypt hash result: %s", hash_hex);
+            free(hash_hex);
+        }
 
         if(((uint *) work->hash)[7] & 0xFFFF0000)
           return(TNR_BAD);
@@ -6748,6 +6940,10 @@ enum test_nonce2_result _test_nonce2(struct work *work, uint32_t nonce,
         uint *work_nonce = (uint *) (work->data + 76);
 
         *work_nonce = htole32(nonce);
+
+        if(opt_debug) {
+            applog(LOG_DEBUG, "_test_nonce2: SHA-256d nonce=0x%08X written to data[76] (LE)", nonce);
+        }
 
         return(hashtest2(work, checktarget));
     }

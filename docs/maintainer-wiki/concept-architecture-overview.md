@@ -194,6 +194,23 @@ OpenCL abstraction in `ocl.c`/`ocl.h`:
 
 **Option parsing** uses ccan's `opt` library for uniform handling.
 
+## Mining Protocol
+
+### Header Formatting and Endianness
+
+NSGminer supports two distinct header formats depending on the mining algorithm:
+
+- **NeoScrypt-Xaya**: Uses a standard 80-byte block header with **big-endian** byte order.
+- **NeoScrypt (regular)**: Uses a 128-byte structure consisting of an 80-byte **little-endian** header followed by 48 bytes of padding. The padding must start with the 4-byte value `0x00000080` at offset 80.
+
+These format differences are critical for share validation. The miner performs header validation at several key points:
+
+- [`work_decode()`](miner.c) – Decodes work from the pool and constructs the appropriate header format.
+- [`gen_stratum_work()`](miner.c) – Generates Stratum work templates with correct header layout.
+- [`_test_nonce2()`](miner.c) – Validates header integrity before submitting shares.
+
+Ensuring strict adherence to these formats prevents share rejections due to malformed headers.
+
 ## Data Flow
 
 ### Mining Loop (per device thread)

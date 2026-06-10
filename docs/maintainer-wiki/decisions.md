@@ -15,9 +15,22 @@ Each decision entry should include:
 
 ## Entries
 
-*No entries yet. This page will be populated as decisions are made during development and maintenance.*
+### Header Validation and Enhanced Logging for Share Submission
+
+- **Date**: 2025-06-10
+- **Title**: Header Validation and Enhanced Logging for Share Submission
+- **Context**: Miners experienced share rejections due to invalid headers and endianness mismatches. Debugging was hampered by insufficient logging information, making it difficult to identify the root cause of invalid shares.
+- **Options Considered**:
+  1. Add comprehensive header validation with detailed error messages
+  2. Implement logging that includes header byte patterns for both accepted and rejected shares
+  3. Add debug mode that dumps raw header data for forensic analysis
+- **Decision**: Implemented all three approaches: enhanced validation checks in [`work_decode()`](miner.c) and [`gen_stratum_work()`](miner.c) to catch malformed headers early, added explicit error logging that distinguishes between header length issues, endianness mismatches, and padding errors, and created a `--debug-headers` mode that outputs raw header bytes for detailed diagnostics.
+- **Consequences**: Reduced invalid share rate by enabling miners to detect configuration errors. Maintainers and users can now diagnose header format issues faster through targeted log messages. Slight performance overhead when `--debug-headers` is enabled, but minimal impact in normal operation.
+- **Evidence**: [`miner.c`](miner.c) – changes in `work_decode()`, `gen_stratum_work()`, and `submit_share()`; new validation logic and logging statements.
 
 ## Adding a Decision
+
+When documenting a new decision:
 
 When documenting a new decision:
 

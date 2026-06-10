@@ -135,6 +135,48 @@ make check
 ./nsgminer -o ... --api-listen --api-allow 127.0.0.1
 ```
 
+### Troubleshooting
+
+#### Debugging Share Rejections
+
+When shares are being rejected, follow this systematic approach:
+
+1. **Enable maximum debug output**:
+   ```bash
+   ./nsgminer -o stratum://pool:port -u user -p pass -D -T --verbose
+   ```
+
+2. **Look for key log messages**:
+   - Endianness mismatches: `"endianness mismatch"`, `"swap"` errors
+   - Header validation failures: `"invalid header"`, `"bad header"`, `"invalid share"`
+   - Padding issues: `"padding"`, `"header length"`
+   - Nonce validation: `"nonce"`, `"duplicate"`, `"low difficulty"`
+
+3. **Test with known-good work**:
+   - Temporarily connect to a test pool with validated work templates
+   - Compare logged header values against expected formats
+   - Use `--benchmark` mode to generate predictable work
+
+4. **Common causes and fixes**:
+   - **Wrong algorithm**: Ensure you're using the correct `--neoscrypt-xaya` flag for Xaya/NeoScrypt-Xaya mining
+   - **Header corruption**: Check for memory corruption in work cloning code (`copy_work()` in `miner.c`)
+   - **Byte order errors**: Verify endianness conversion in `work_decode()` and `gen_stratum_work()`
+   - **Padding missing**: For regular NeoScrypt, ensure 48-byte padding with `0x00000080` at offset 80
+
+5. **Reproduce with minimal setup**:
+   ```bash
+   # Disable all devices except one CPU
+   ./nsgminer -o stratum://pool:port -u user -p pass --cpu-enabled -D -T
+   
+   # Reduce to single mining thread
+   ./nsgminer -o stratum://pool:port -u user -p pass --cpu-enabled -t 1 -D -T
+   ```
+
+6. **Inspect work structures** (requires code modification):
+   - Add debug prints in `submit_share()` to log raw header bytes
+   - Compare between accepted and rejected shares
+   - Verify nonce values are incrementing correctly
+
 ### Common Issues
 
 | Issue | Check | Fix |
