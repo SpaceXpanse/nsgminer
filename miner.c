@@ -70,7 +70,7 @@
 #endif
 
 bool opt_neoscrypt = false;
-bool opt_neoscrypt_xaya = false;
+bool opt_xayaswab = false;
 bool opt_scrypt    = false;
 bool opt_sha256d   = false;
 
@@ -136,7 +136,6 @@ int opt_expiry_lp = 3600;
 int opt_bench_algo = -1;
 static const bool opt_time = true;
 unsigned long long global_hashrate;
-char current_fullhash[68];
 
 #ifdef HAVE_OPENCL
 int opt_dynamic_interval = 7;
@@ -147,7 +146,6 @@ int gpu_threads;
 #endif
 
 bool opt_restart = true;
-bool opt_reorder = false;
 static bool opt_nogpu;
 
 struct list_head scan_devices;
@@ -1058,10 +1056,10 @@ static struct opt_table opt_config_table[] = {
     OPT_WITHOUT_ARG("--neoscrypt",
       opt_set_bool, &opt_neoscrypt,
       "Use the NeoScrypt algorithm for mining"),
-    OPT_WITHOUT_ARG("--neoscrypt-xaya",
-      opt_set_bool, &opt_neoscrypt_xaya,
-      "Use the NeoScrypt-Xaya algorithm for mining"),
 #endif
+    OPT_WITHOUT_ARG("--xaya-byteswap",
+      opt_set_bool, &opt_xayaswab,
+      "Apply byteswap for Xaya's NeoScrypt"),
 #ifdef USE_SCRYPT
     OPT_WITHOUT_ARG("--scrypt",
       opt_set_bool, &opt_scrypt,
@@ -1819,7 +1817,7 @@ static bool work_decode(struct pool *pool, struct work *work, json_t *val)
 	bool ret = false;
     uint data_size = 80, target_size = 32;
 
-    if(!opt_neoscrypt && !opt_neoscrypt_xaya) data_size = 128;
+    if(!opt_neoscrypt) data_size = 128;
 
 	if (work->tmpl) {
 		const char *err = blktmpl_add_jansson(work->tmpl, res_val, time(NULL));
@@ -1896,7 +1894,7 @@ static bool work_decode(struct pool *pool, struct work *work, json_t *val)
 #endif
 		if (blkmk_get_data(work->tmpl, work->data, 80, time(NULL), NULL, &work->dataid) < 76)
 			return false;
-        if(!opt_neoscrypt && !opt_neoscrypt_xaya) swap32yes(work->data, work->data, 80 / 4);
+        if(!opt_neoscrypt || opt_xayaswab) swap32yes(work->data, work->data, 80 / 4);
 		memcpy(&work->data[80], "\0\0\0\x80\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x80\x02\0\0", 48);
 
 		const struct blktmpl_longpoll_req *lp;
@@ -1947,7 +1945,7 @@ static bool work_decode(struct pool *pool, struct work *work, json_t *val)
 		uint32_t blkheight = json_number_value(tmp_val);
 
         uint block_id;
-        if(opt_neoscrypt || opt_neoscrypt_xaya)
+        if(opt_neoscrypt && !opt_xayaswab)
           block_id = le32toh(((uint *) work->data)[1]);
         else
           block_id = be32toh(((uint *) work->data)[1]);
@@ -2171,7 +2169,7 @@ static void suffix_string(uint64_t val, char *buf, int sigdigits)
 static double utility_to_hashrate(double utility) {
     double modifier;
 
-    if(opt_neoscrypt || opt_neoscrypt_xaya || opt_scrypt)
+    if(opt_neoscrypt || opt_scrypt)
       modifier = 0.000244140625;
     else
       modifier = 1.0;
@@ -2229,14 +2227,15 @@ hashrate_to_bufstr(char*buf, float hashrate, signed char unitin, enum h2bs_fmt f
 	
 	for (i = 0; i <= unit; ++i)
 		hashrate /= 1000;
-
-    /* 0.000 */
-    prec = 3;
-    /* 00.00 */
-    if(hashrate >= 9.9995) prec = 2;
-    /* 000.0 */
-    if(hashrate >= 99.995) prec = 1;
-
+	// 100 but with tolerance for floating-point rounding, max "99.99" then "100.0"
+	if (hashrate >= 99.995 || unit < 2)
+		prec = 1;
+	else
+	// 10 but with tolerance for floating-point rounding, max "9.999" then "10.00"
+	if (hashrate >= 9.9995)
+		prec = 2;
+	else
+		prec = 3;
 	ucp = (fmt == H2B_NOUNIT ? '\0' : buf[5]);
 	sprintf(buf, "%5.*f", prec, hashrate);
 	buf[5] = ucp;
@@ -2312,12 +2311,10 @@ static void curses_print_status(void)
 
     char *display_algo;
 #ifdef USE_NEOSCRYPT
-    if(opt_neoscrypt || opt_neoscrypt_xaya) {
-      if(opt_neoscrypt_xaya)
-        display_algo = "NeoScrypt-Xaya";
-      else
-        display_algo = "NeoScrypt";
-    } else
+    if(opt_neoscrypt && !opt_xayaswab)
+      display_algo = "NeoScrypt";
+    else if (opt_neoscrypt)
+      display_algo = "NeoScrypt / Xaya";
 #endif
 #ifdef USE_SCRYPT
     if(opt_scrypt)
@@ -2769,7 +2766,7 @@ static char *submit_upstream_work_request(struct work *work)
     if(work->tmpl) {
 
         json_t *req;
-        if(opt_neoscrypt || opt_neoscrypt_xaya) {
+        if(opt_neoscrypt && !opt_xayaswab) {
             req = blkmk_submit_jansson(work->tmpl, work->data, work->dataid,
               be32toh(*((uint32_t *) &work->data[76])));
             s = json_dumps(req, 0);
@@ -2879,8 +2876,8 @@ static bool submit_upstream_work_completed(struct work *work, bool resubmit, str
 				diffplaces = 6;
 
             sprintf(worktime, " <-%08llx.%08llx M:%c D:%1.*f G:%02d:%02d:%02d:%1.3f %s (%1.3f) W:%1.3f (%1.3f) S:%1.3f R:%02d:%02d:%02d",
-              (ullong)swab32(*(uint32_t *) &(work->data[(opt_neoscrypt || opt_neoscrypt_xaya || opt_scrypt) ? 32 : 28])),
-              (ullong)swab32(*(uint32_t *) &(work->data[(opt_neoscrypt || opt_neoscrypt_xaya || opt_scrypt) ? 28 : 24])),
+              (ullong)swab32(*(uint32_t *) &(work->data[(opt_neoscrypt || opt_scrypt) ? 32 : 28])),
+              (ullong)swab32(*(uint32_t *) &(work->data[(opt_neoscrypt || opt_scrypt) ? 28 : 24])),
 				work->getwork_mode, diffplaces, work->work_difficulty,
 				tm_getwork.tm_hour, tm_getwork.tm_min,
 				tm_getwork.tm_sec, getwork_time, workclone,
@@ -3518,7 +3515,7 @@ static void roll_work(struct work *work) {
 
         if(blkmk_get_data(work->tmpl, work->data, 80, time(NULL), NULL, &work->dataid) < 76)
           applog(LOG_ERR, "Failed to get next data from template; spinning wheels!");
-        if(!opt_neoscrypt && !opt_neoscrypt_xaya) swap32yes(work->data, work->data, 80 / 4);
+        if(!opt_neoscrypt || opt_xayaswab) swap32yes(work->data, work->data, 80 / 4);
 #if defined(USE_SHA256D) || defined(USE_SCRYPT)
         if(opt_sha256d || opt_scrypt) calc_midstate(work);
 #endif
@@ -3533,7 +3530,7 @@ static void roll_work(struct work *work) {
 
         work_ntime = (uint *)(work->data + 68);
 
-        if(opt_neoscrypt || opt_neoscrypt_xaya) {
+        if(opt_neoscrypt && !opt_xayaswab) {
             ntime = le32toh(*work_ntime);
             ntime++;
             *work_ntime = htole32(ntime);
@@ -3654,7 +3651,7 @@ static bool stale_work(struct work *work, bool share)
 		return false;
 
     uint block_id;
-    if(opt_neoscrypt || opt_neoscrypt_xaya)
+    if(opt_neoscrypt && !opt_xayaswab)
       block_id = le32toh(((uint *) work->data)[1]);
     else
       block_id = be32toh(((uint *) work->data)[1]);
@@ -3840,7 +3837,7 @@ static struct submit_work_state *begin_submission(struct work *work)
     uchar target[32];
     uint nbits;
 
-    if(opt_neoscrypt || opt_neoscrypt_xaya)
+    if(opt_neoscrypt && !opt_xayaswab)
       nbits = le32toh(*((uint *) (work->data + 72)));
     else
       nbits = be32toh(*((uint *) (work->data + 72)));
@@ -3882,7 +3879,7 @@ static struct submit_work_state *begin_submission(struct work *work)
 		HASH_ADD_INT(stratum_shares, id, sshare);
 		mutex_unlock(&sshare_lock);
 
-        if(opt_neoscrypt || opt_neoscrypt_xaya)
+        if(opt_neoscrypt && !opt_xayaswab)
           nonce = htobe32(*((uint32_t *)(work->data + 76)));
         else
           nonce = *((uint32_t *)(work->data + 76));
@@ -4472,7 +4469,7 @@ static void set_curblock(uchar *data, char *hexstr,
     uint hash[8];
     uint i;
 
-    if(opt_neoscrypt) {
+    if(opt_neoscrypt && !opt_xayaswab) {
         for(i = 0; i < 8; i++)
           hash[i] = le32toh(((uint *) data)[i + 1]);
     } else {
@@ -4529,7 +4526,7 @@ static void set_block_diff(const struct work *work) {
     uint nbits;
     ullong d64;
 
-    if(opt_neoscrypt || opt_neoscrypt_xaya)
+    if(opt_neoscrypt && !opt_xayaswab)
       nbits = le32toh(*((uint *) (work->data + 72)));
     else
       nbits = be32toh(*((uint *) (work->data + 72)));
@@ -4561,7 +4558,7 @@ static bool test_work_current(struct work *work)
       temp += ((uint *) work->data)[i];
     if(!temp) return(ret);
 
-    if(opt_neoscrypt || opt_neoscrypt_xaya) {
+    if(opt_neoscrypt && !opt_xayaswab) {
         hash_head  = (ullong)le32toh(((uint *) work->data)[8]) << 32;
         hash_head |= (ullong)le32toh(((uint *) work->data)[7]);
         block_id = le32toh(((uint *) work->data)[1]);
@@ -6129,7 +6126,7 @@ static void *stratum_thread(void *userdata)
 			if (cb_height_sz == 3) {
 
                     uint block_id;
-                    if(opt_neoscrypt || opt_neoscrypt_xaya)
+                    if(opt_neoscrypt && !opt_xayaswab)
                       block_id = le32toh(((uint *) work->data)[1]);
                     else
                       block_id = be32toh(((uint *) work->data)[1]);
@@ -6560,7 +6557,7 @@ static void gen_stratum_work(struct pool *pool, struct work *work) {
     }
 
     /* Assemble the block header */
-    if(opt_neoscrypt || opt_neoscrypt_xaya) {
+    if(opt_neoscrypt && !opt_xayaswab) {
         /* Version */
         hex2bin((uchar *) &t, (char *) pool->swork.bbversion, 4);
         data[0] = be32toh(t);
@@ -6617,7 +6614,7 @@ static void gen_stratum_work(struct pool *pool, struct work *work) {
         char *merkle_hash, *header;
         merkle_hash = bin2hex((const uchar *) merkle_root, 32);
         applog(LOG_DEBUG, "Generated Stratum merkle root %s", merkle_hash);
-        header = bin2hex((const uchar *) data, (opt_neoscrypt || opt_neoscrypt_xaya) ? 80 : 128);
+        header = bin2hex((const uchar *) data, opt_neoscrypt ? 80 : 128);
         applog(LOG_DEBUG, "Generated Stratum block header %s", header);
         applog(LOG_DEBUG, "Work job_id %s nonce2 %s ntime %s", work->job_id, work->nonce2, work->ntime);
         free(merkle_hash);
@@ -6709,7 +6706,7 @@ enum test_nonce2_result _test_nonce2(struct work *work, uint32_t nonce,
   bool checktarget) {
 
 #ifdef USE_NEOSCRYPT
-    if(opt_neoscrypt || opt_neoscrypt_xaya) {
+    if(opt_neoscrypt) {
 
         neoscrypt((uchar *) work->data, (uchar *) work->hash, 0x80000620);
 
