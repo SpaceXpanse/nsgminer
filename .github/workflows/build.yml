@@ -2,9 +2,9 @@ name: Build and Test
 
 on:
   push:
-    branches: [ dev ]
+    branches: [ neoscrypt-xaya ]
   pull_request:
-    branches: [ dev ]
+    branches: [ neoscrypt-xaya ]
   workflow_dispatch:
 
 env:
