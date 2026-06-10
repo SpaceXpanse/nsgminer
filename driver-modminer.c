@@ -699,13 +699,15 @@ modminer_process_results(struct thr_info*thr)
 				applog(LOG_DEBUG, "%s %u.%u: Nonce with H not zero  : %02x%02x%02x%02x",
 				       modminer->api->name, modminer->device_id, fpgaid,
 				       NONCE_CHARS(nonce));
+	#if defined(USE_SHA256D) || defined(USE_SCRYPT)
 				mutex_lock(&stats_lock);
 				++total_diff1;
 				++modminer->diff1;
 				++work->pool->diff1;
 				++hw_errors;
-				++modminer->hw_errors;
 				mutex_unlock(&stats_lock);
+	#endif
+				++modminer->hw_errors;
 				++state->bad_share_counter;
 				++immediate_bad_nonces;
 			}
