@@ -39,7 +39,7 @@ jobs:
 
     - name: Configure
       run: |
-        ./configure --enable-neoscrypt-xaya --without-curses
+        ./configure --without-curses
 
     - name: Build
       run: |
@@ -93,7 +93,7 @@ jobs:
 
     - name: Configure
       run: |
-        ./configure --enable-neoscrypt-xaya --enable-opencl --without-curses
+        ./configure --enable-opencl --without-curses
 
     - name: Build
       run: |
@@ -141,7 +141,7 @@ jobs:
 
     - name: Configure
       run: |
-        ./configure --enable-neoscrypt-xaya --enable-bitforce --enable-icarus --enable-modminer --enable-x6500 --enable-ztex --without-curses
+        ./configure --enable-bitforce --enable-icarus --enable-modminer --enable-x6500 --enable-ztex --without-curses
 
     - name: Build
       run: |
@@ -191,7 +191,7 @@ jobs:
     - name: Configure
       shell: msys2 {0}
       run: |
-        ./configure --enable-neoscrypt-xaya --without-curses LDFLAGS="-L/mingw64/lib" CPPFLAGS="-I/mingw64/include"
+        ./configure --without-curses LDFLAGS="-L/mingw64/lib" CPPFLAGS="-I/mingw64/include"
 
     - name: Build
       shell: msys2 {0}
@@ -234,7 +234,7 @@ jobs:
       run: |
         CPPFLAGS="-I$(brew --prefix libgpg-error)/include -I$(brew --prefix libgcrypt)/include" \
         LDFLAGS="-L$(brew --prefix libgpg-error)/lib -L$(brew --prefix libgcrypt)/lib" \
-        ./configure --enable-neoscrypt-xaya --without-curses
+        ./configure --without-curses
 
     - name: Build
       run: |
@@ -273,8 +273,8 @@ jobs:
     - name: Check for neoscrypt-xaya support
       run: |
         echo "Checking neoscrypt-xaya implementation..."
-        strings nsgminer | grep -i "neoscrypt-xaya" | head -5 || echo "neoscrypt-xaya string found in binary"
-        ./nsgminer --help 2>&1 | grep -i "neoscrypt-xaya" && echo "neoscrypt-xaya flag is available" || echo "Help check completed"
+        strings nsgminer | grep -i "xaya-byteswap" | head -5 || echo "xaya-byteswap string found in binary"
+        ./nsgminer --help 2>&1 | grep -i "xaya-byteswap" && echo "xaya-byteswap flag is available" || echo "Help check completed"
 
   # Full test with neoscrypt-xaya algorithm
   test-neoscrypt-xaya:
@@ -296,15 +296,15 @@ jobs:
 
     - name: Test neoscrypt-xaya flag parsing
       run: |
-        echo "Testing --neoscrypt-xaya flag parsing..."
-        timeout 5 ./nsgminer --neoscrypt-xaya --url=http://localhost:8332 --user=xuser1 --pass=xpass1 2>&1 || true
+        echo "Testing --neoscrypt --xaya-byteswap flag parsing..."
+        timeout 5 ./nsgminer --neoscrypt --xaya-byteswap --url=http://localhost:11999 --user=xuser1 --pass=xpass1 2>&1 || true
         
     - name: Test algorithm detection
       run: |
         echo "Testing algorithm detection..."
         # Test that both neoscrypt and neoscrypt-xaya can be used
         timeout 3 ./nsgminer --neoscrypt --help 2>&1 | head -20 || true
-        timeout 3 ./nsgminer --neoscrypt-xaya --help 2>&1 | head -20 || true
+        timeout 3 ./nsgminer --neoscrypt --xaya-byteswap --help 2>&1 | head -20 || true
 
     - name: Test build verification
       run: |
