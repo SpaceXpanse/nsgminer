@@ -706,7 +706,7 @@ void *set_algo_quick(enum algo_types *algo) {
 
     if(opt_neoscrypt) {
         *algo = ALGO_NEOSCRYPT;
-    } else if(opt_neoscrypt_xaya) {
+    } else if(opt_xayaswab) {
         *algo = ALGO_NEOSCRYPT_XAYA;
     } else if(opt_scrypt) {
         *algo = ALGO_SCRYPT;
@@ -946,7 +946,7 @@ static int64_t cpu_scanhash(struct thr_info *thr, struct work *work, int64_t max
         } else
 #endif
 #ifdef USE_NEOSCRYPT_XAYA
-        if(opt_neoscrypt_xaya) {
+        if(opt_xayaswab) {
             rc = scanhash_neoscrypt_xaya(thr, (uint *) work->data, (uint *) work->target,
               (uint *) work->hash, work->blk.nonce, max_nonce, &final_nonce);
         } else
