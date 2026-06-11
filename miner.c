@@ -6653,7 +6653,7 @@ static void gen_stratum_work(struct pool *pool, struct work *work) {
         if(version == 0 || version > 0xFFFFFFFF) {
             applog(LOG_WARNING, "gen_stratum_work: Invalid version field for Xaya/NeoScrypt: 0x%08X", version);
             if(opt_debug) {
-                char *header = bin2hex(data, 80);
+                char *header = bin2hex((const unsigned char *)data, 80);
                 applog(LOG_WARNING, "gen_stratum_work: Invalid header dump: %s", header);
                 free(header);
             }
@@ -6669,7 +6669,7 @@ static void gen_stratum_work(struct pool *pool, struct work *work) {
 
         applog(LOG_DEBUG, "gen_stratum_work: Xaya/NeoScrypt header complete (80 bytes)");
         if(opt_debug) {
-            char *header = bin2hex(data, 80);
+            char *header = bin2hex((const unsigned char *)data, 80);
             applog(LOG_DEBUG, "gen_stratum_work: Xaya/NeoScrypt header: %s", header);
             free(header);
         }
