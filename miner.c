@@ -6724,7 +6724,7 @@ static void gen_stratum_work(struct pool *pool, struct work *work) {
 
         applog(LOG_DEBUG, "gen_stratum_work: Regular header complete (80 bytes)");
         if(opt_debug) {
-            char *header = bin2hex(data, 80);
+            char *header = bin2hex((const unsigned char *)data, 80);
             applog(LOG_DEBUG, "gen_stratum_work: Regular header: %s", header);
             free(header);
         }
