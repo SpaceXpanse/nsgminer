@@ -6705,15 +6705,15 @@ static void gen_stratum_work(struct pool *pool, struct work *work) {
         uint32_t version_le = le32toh(data[0]);
         uint32_t ntime_le = le32toh(data[17]);
         uint32_t nbits_le = le32toh(data[18]);
-        if(version_le == 0 || version_le > 0xFFFFFFFF) {
-            applog(LOG_WARNING, "gen_stratum_work: Invalid version field for regular: 0x%08X", version_le);
-            if(opt_debug) {
-                char *header = bin2hex(data, 80);
-                applog(LOG_WARNING, "gen_stratum_work: Invalid header dump: %s", header);
-                free(header);
-            }
+    if(version_le == 0 || version_le > 0xFFFFFFFF) {
+        applog(LOG_WARNING, "gen_stratum_work: Invalid version field for regular: 0x%08X", version_le);
+        if(opt_debug) {
+            char *header = bin2hex((const unsigned char *)data, 80);
+            applog(LOG_WARNING, "gen_stratum_work: Invalid header dump: %s", header);
+            free(header);
         }
-        if(ntime_le == 0) {
+    }
+    if(ntime_le == 0) {
             applog(LOG_WARNING, "gen_stratum_work: Invalid timestamp for regular: 0x%08X", ntime_le);
         }
         if(nbits_le == 0) {
