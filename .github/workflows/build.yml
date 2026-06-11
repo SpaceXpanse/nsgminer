@@ -43,7 +43,7 @@ jobs:
 
     - name: Build
       run: |
-        make -j$(nproc)
+        make clean && make -j$(nproc)
 
     - name: Verify binary
       run: |
@@ -97,7 +97,7 @@ jobs:
 
     - name: Build
       run: |
-        make -j$(nproc)
+        make clean && make -j$(nproc)
 
     - name: Verify binary
       run: |
@@ -112,52 +112,52 @@ jobs:
         retention-days: 7
 
   # Linux Build - FPGA
-  linux-fpga:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          autoconf \
-          automake \
-          libtool \
-          pkg-config \
-          libcurl4-gnutls-dev \
-          libjansson-dev \
-          libncurses-dev \
-          uthash-dev \
-          yasm \
-          libusb-1.0-0-dev \
-          libudev-dev
-
-    - name: Autogen
-      run: |
-        chmod +x autogen.sh
-        ./autogen.sh
-
-    - name: Configure
-      run: |
-        ./configure --enable-neoscrypt-xaya --enable-bitforce --enable-icarus --enable-modminer --enable-x6500 --enable-ztex --without-curses
-
-    - name: Build
-      run: |
-        make -j$(nproc)
-
-    - name: Verify binary
-      run: |
-        ls -la nsgminer
-        file nsgminer
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: nsgminer-linux-fpga
-        path: nsgminer
-        retention-days: 7
+  #linux-fpga:
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #  - name: Checkout
+  #    uses: actions/checkout@v4
+  #
+  #  - name: Install dependencies
+  #    run: |
+  #      sudo apt-get update
+  #      sudo apt-get install -y \
+  #        autoconf \
+  #        automake \
+  #        libtool \
+  #        pkg-config \
+  #        libcurl4-gnutls-dev \
+  #        libjansson-dev \
+  #        libncurses-dev \
+  #        uthash-dev \
+  #        yasm \
+  #        libusb-1.0-0-dev \
+  #        libudev-dev
+  #
+  #  - name: Autogen
+  #    run: |
+  #      chmod +x autogen.sh
+  #      ./autogen.sh
+  #
+  #  - name: Configure
+  #    run: |
+  #      ./configure --enable-neoscrypt-xaya --enable-bitforce --enable-icarus --enable-modminer --enable-x6500 --enable-ztex --without-curses
+  #
+  #  - name: Build
+  #    run: |
+  #      make clean && make -j$(nproc)
+  #
+  #  - name: Verify binary
+  #    run: |
+  #      ls -la nsgminer
+  #      file nsgminer
+  #
+  #  - name: Upload artifact
+  #    uses: actions/upload-artifact@v4
+  #    with:
+  #      name: nsgminer-linux-fpga
+  #      path: nsgminer
+  #      retention-days: 7
 
   # Windows Build (MinGW)
   windows-build:
@@ -196,7 +196,7 @@ jobs:
     - name: Build
       shell: msys2 {0}
       run: |
-        make -j$NUMBER_OF_PROCESSORS
+        make clean && make -j$NUMBER_OF_PROCESSORS
 
     - name: Verify binary
       shell: msys2 {0}
@@ -238,7 +238,7 @@ jobs:
 
     - name: Build
       run: |
-        make -j$(sysctl -n hw.ncpu)
+        make clean && make -j$(sysctl -n hw.ncpu)
 
     - name: Verify binary
       run: |

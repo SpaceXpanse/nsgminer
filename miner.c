@@ -2816,13 +2816,18 @@ static char *submit_upstream_work_request(struct work *work)
     if(work->tmpl) {
 
         json_t *req;
-        if(opt_neoscrypt && !opt_xayaswab) {
-            req = blkmk_submit_jansson(work->tmpl, work->data, work->dataid,
+        if(opt_xayaswab) {
+            // Xaya/NeoScrypt-Xaya mode: Big-endian nonce for network transmission
+            uchar data[80];
+            swap32yes(data, work->data, 80 / 4);
+            req = blkmk_submit_jansson(work->tmpl, data, work->dataid,
               be32toh(*((uint32_t *) &work->data[76])));
             s = json_dumps(req, 0);
             json_decref(req);
-            sd = bin2hex(work->data, 80);
+            sd = bin2hex(data, 80);
+            applog(LOG_DEBUG, "submit_upstream_work_request: Xaya/NeoScrypt-Xaya mode, nonce=0x%08X (BE)", be32toh(*((uint32_t *) &work->data[76])));
         } else {
+            // Regular mode (getblocktemplate): Little-endian
             uchar data[80];
             swap32yes(data, work->data, 80 / 4);
             req = blkmk_submit_jansson(work->tmpl, data, work->dataid,
@@ -2830,6 +2835,7 @@ static char *submit_upstream_work_request(struct work *work)
             s = json_dumps(req, 0);
             json_decref(req);
             sd = bin2hex(data, 80);
+            applog(LOG_DEBUG, "submit_upstream_work_request: Regular mode, nonce=0x%08X (LE)", le32toh(*((uint32_t *) &work->data[76])));
     }
 
 	} else {
