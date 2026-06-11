@@ -2839,18 +2839,25 @@ static char *submit_upstream_work_request(struct work *work)
     }
 
 	} else {
-
-	/* build hex string */
-	hexstr = bin2hex(work->data, sizeof(work->data));
-
-	/* build JSON-RPC request */
-		s = strdup("{\"method\": \"getwork\", \"params\": [ \"");
-		s = realloc_strcat(s, hexstr);
-		s = realloc_strcat(s, "\" ], \"id\":1}");
-
-		free(hexstr);
-		sd = s;
-
+		/* getwork submission path */
+		if(opt_xayaswab) {
+			/* Xaya/NeoScrypt-Xaya mode: convert nonce back to big-endian for submission */
+			uint32_t nonce = be32toh(*((uint32_t *)(work->data + 76)));
+			applog(LOG_DEBUG, "submit_upstream_work_request: getwork Xaya mode, nonce=0x%08X (BE)", nonce);
+			hexstr = bin2hex((const unsigned char *)work->data, 80);
+			s = malloc(1024);
+			sprintf(s, "{\"method\": \"getwork\", \"params\": [ \"%s\" ], \"id\":1}", hexstr);
+			free(hexstr);
+			sd = s;
+		} else {
+			/* Regular mode */
+			hexstr = bin2hex(work->data, sizeof(work->data));
+			s = strdup("{\"method\": \"getwork\", \"params\": [ \"");
+			s = realloc_strcat(s, hexstr);
+			s = realloc_strcat(s, "\" ], \"id\":1}");
+			free(hexstr);
+			sd = s;
+		}
 	}
 
 	applog(LOG_DEBUG, "DBG: sending %s submit RPC call: %s", pool->rpc_url, sd);
