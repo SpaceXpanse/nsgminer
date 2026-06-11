@@ -3929,8 +3929,11 @@ static struct submit_work_state *begin_submission(struct work *work)
 		HASH_ADD_INT(stratum_shares, id, sshare);
 		mutex_unlock(&sshare_lock);
 
-        if(opt_neoscrypt && !opt_xayaswab)
+        /* Xaya/NeoScrypt-Xaya requires big-endian nonce for network transmission */
+        if(opt_xayaswab)
           nonce = htobe32(*((uint32_t *)(work->data + 76)));
+        else if(opt_neoscrypt)
+          nonce = le32toh(*((uint32_t *)(work->data + 76)));
         else
           nonce = *((uint32_t *)(work->data + 76));
 
@@ -6621,7 +6624,9 @@ static void gen_stratum_work(struct pool *pool, struct work *work) {
     }
 
     /* Assemble the block header */
-    if(opt_neoscrypt && !opt_xayaswab) {
+    if(opt_xayaswab) {
+        /* Xaya/NeoScrypt-Xaya mode: Big-endian network byte order */
+        applog(LOG_DEBUG, "gen_stratum_work: Xaya/NeoScrypt-Xaya mode detected (opt_xayaswab=%d)", opt_xayaswab);
         /* Version */
         hex2bin((uchar *) &t, (char *) pool->swork.bbversion, 4);
         data[0] = be32toh(t);
@@ -6631,10 +6636,10 @@ static void gen_stratum_work(struct pool *pool, struct work *work) {
         for(i = 0; i < 8; i++)
           data[i + 1] = be32toh(((uint *) temp_bin)[i]);
         applog(LOG_DEBUG, "gen_stratum_work: Previous block hash (BE conversion for %d words)", 8);
-        /* Merkle root */
+        /* Merkle root - for Xaya this should be Neoscrypt(real_header) but using standard for now */
         for(i = 0; i < 8; i++)
-          data[i + 9] = le32toh(((uint *) merkle_root)[i]);
-        applog(LOG_DEBUG, "gen_stratum_work: Merkle root (LE conversion for %d words)", 8);
+          data[i + 9] = be32toh(((uint *) merkle_root)[i]);
+        applog(LOG_DEBUG, "gen_stratum_work: Merkle root (BE conversion for %d words)", 8);
         /* Time */
         hex2bin((uchar *) &t, (char *) pool->swork.ntime, 4);
         data[17] = be32toh(t);
@@ -6646,7 +6651,7 @@ static void gen_stratum_work(struct pool *pool, struct work *work) {
         /* Erase the remaining part */
         memset(&data[19], 0x00, 52);
 
-        /* Endianness validation for Xaya/NeoScrypt header fields */
+        /* Endianness validation for Xaya/NeoScrypt-Xaya header fields */
         uint32_t version = be32toh(data[0]);
         uint32_t ntime = be32toh(data[17]);
         uint32_t nbits = be32toh(data[18]);
@@ -6664,16 +6669,16 @@ static void gen_stratum_work(struct pool *pool, struct work *work) {
         if(nbits == 0) {
             applog(LOG_WARNING, "gen_stratum_work: Invalid nbits for Xaya/NeoScrypt: 0x%08X", nbits);
         }
-        applog(LOG_DEBUG, "gen_stratum_work: Xaya/NeoScrypt header endianness validated (version=0x%08X, ntime=0x%08X, nbits=0x%08X)",
+        applog(LOG_DEBUG, "gen_stratum_work: Xaya/NeoScrypt-Xaya header endianness validated (version=0x%08X, ntime=0x%08X, nbits=0x%08X)",
                version, ntime, nbits);
 
-        applog(LOG_DEBUG, "gen_stratum_work: Xaya/NeoScrypt header complete (80 bytes)");
+        applog(LOG_DEBUG, "gen_stratum_work: Xaya/NeoScrypt-Xaya header complete (80 bytes)");
         if(opt_debug) {
             char *header = bin2hex((const unsigned char *)data, 80);
-            applog(LOG_DEBUG, "gen_stratum_work: Xaya/NeoScrypt header: %s", header);
+            applog(LOG_DEBUG, "gen_stratum_work: Xaya/NeoScrypt-Xaya header: %s", header);
             free(header);
         }
-    } else {
+    } else if(opt_neoscrypt) {
         /* Version */
         hex2bin((uchar *) &t, (char *) pool->swork.bbversion, 4);
         data[0] = le32toh(t);
