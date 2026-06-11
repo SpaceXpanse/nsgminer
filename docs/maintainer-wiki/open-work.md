@@ -20,6 +20,12 @@ Unresolved issues, known gaps, and areas needing improvement in NSGminer.
 - **Evidence**: `make check` may not exist or have minimal coverage
 - **Need**: Unit tests for critical algorithms (sha256, neoscrypt, scrypt)
 
+### Documentation Validation
+- **Gap**: No automated documentation consistency check script implemented
+- **Impact**: Documentation drift may go undetected without manual review
+- **Evidence**: No `docs:check` script found; validation currently manual (`agent-guide.md`)
+- **Need**: Implement a docs consistency validator aligned with wiki evidence references
+
 ### Documentation Gaps
 - Missing detailed FPGA bitstream documentation
 - No API versioning policy documented

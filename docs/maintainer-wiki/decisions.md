@@ -15,6 +15,18 @@ Each decision entry should include:
 
 ## Entries
 
+### NSGminer Maintainer Wiki Alignment and Evidence Correction
+- **Date**: 2026-06-11
+- **Title**: NSGminer maintainer wiki alignment and evidence correction
+- **Context**: A routine review of `docs/maintainer-wiki/` was performed against the actual source code and build configuration to ensure accuracy. Several evidence line references in `tech-stack.md` were found to be incorrect.
+- **Options Considered**:
+  1. Leave documentation as-is with known inaccuracies
+  2. Update documentation to match actual source code and build configuration
+  3. Regenerate entire wiki from source analysis
+- **Decision**: Option 2. Updated `tech-stack.md` evidence line reference from `configure.ac:120-350` to `configure.ac:145-510` to correctly match the feature detection section verified against actual `configure.ac` content.
+- **Consequences**: Maintainer wiki remains accurate and trustworthy. Future updates should verify evidence references against actual code before committing.
+- **Evidence**: Verified against actual `configure.ac` in repository root; feature detection section spans lines 145-510.
+
 ### Header Validation and Enhanced Logging for Share Submission
 
 - **Date**: 2025-06-10

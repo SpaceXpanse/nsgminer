@@ -2,6 +2,27 @@
 
 Chronological record of significant updates to the maintainer wiki.
 
+## 2026-06-11: Wiki Accuracy Audit and Evidence Correction
+
+**Performed by**: Documentation Specialist maintenance review
+**Purpose**: Ensure wiki accuracy by cross-referencing documentation with actual source code and build configuration.
+
+### Changes Made
+
+- **tech-stack.md**: Corrected `configure.ac` evidence line reference from `120-350` to `145-510` to match the actual feature detection section in the repository.
+- **decisions.md**: Added new decision entry documenting this evidence correction and its rationale.
+- **open-work.md**: Added explicit item for missing automated documentation validation script (no `docs:check` equivalent currently implemented).
+- **log.md**: Updated to record this review (this entry).
+
+### Verification
+
+All existing wiki pages were reviewed for alignment with:
+- Actual `configure.ac` content
+- Actual `Makefile.am` content
+- Actual project directory structure
+
+No missing required pages were found. `index.md` already catalogs all existing pages.
+
 ## 2025-06-09: Initial Wiki Setup
 
 **Created by**: Wiki initialization process

@@ -142,5 +142,5 @@ This inventory is derived from:
 - Source file headers and comments
 - Direct inspection of vendor code in `ADL/`, `NVML/`, `lib/`
 
-For detailed configure checks, see `configure.ac` lines 120-350 (feature detection).
+For detailed configure checks, see `configure.ac` lines 145-510 (feature detection).
 For library dependencies, see `configure.ac` lines 70-120 (header/library checks).
