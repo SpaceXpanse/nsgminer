@@ -1821,8 +1821,8 @@ static bool work_decode(struct pool *pool, struct work *work, json_t *val)
 
     if(!opt_neoscrypt) data_size = 128;
 
-    applog(LOG_DEBUG, "work_decode: Pool %d, data_size=%u, target_size=%u, opt_neoscrypt=%d",
-           pool->pool_no, data_size, target_size, opt_neoscrypt);
+    applog(LOG_DEBUG, "work_decode: Pool %d, data_size=%u, target_size=%u, opt_neoscrypt=%d, opt_xayaswab=%d",
+           pool->pool_no, data_size, target_size, opt_neoscrypt, opt_xayaswab);
 
 	if (work->tmpl) {
 		const char *err = blktmpl_add_jansson(work->tmpl, res_val, time(NULL));
