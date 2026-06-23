@@ -1,4 +1,4 @@
-nsgminerder========
+======= nsgminer ========
 
 A multithreaded multipool GPU, CPU and FPGA miner with the AMD and NVIDIA GPU
 support including temperature monitoring, fan speed monitoring, clock speed and
