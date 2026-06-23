@@ -1,5 +1,4 @@
-NSGminer
-========
+nsgminerder========
 
 A multithreaded multipool GPU, CPU and FPGA miner with the AMD and NVIDIA GPU
 support including temperature monitoring, fan speed monitoring, clock speed and
@@ -14,7 +13,7 @@ John Doering <ghostlander@phoenixcoin.org>
 
 SOURCE CODE AND PRE-COMPILED BINARIES:
 
-http://github.com/ghostlander/nsgminer
+http://github.com/SpaceXpanse/nsgminer
 
 
 License: GPLv3.  See COPYING for details.
